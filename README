@@ -1,0 +1,83 @@
+ACLayer is a database backed access control library which provides full group, user, and role access management, with recursive lookups. It is granular down to the permission and to the resource, and is very flexible.
+
+This is a project that I have been working on for a long while now. After several major revisions, I finally have it stable enough to use. This is something that I have found lacking across the internet, with no good library available.
+
+It has not yet been fully poked and prodded, but it does work. All public functions have been tested to make sure that they at least return what they are expected to in optimal conditions.
+
+### Dependencies
+Zend Framework
+
+### Setup
+
+    /* Requires Constants */
+    define('ACL_PERMSCOPE_GLOBAL', 3);
+    define('ACL_PERMSCOPE_GROUP', 2);
+    define('ACL_PERMSCOPE_RESOURCE', 5);
+    define('ACL_RESTYPE_GROUP', 1);
+    define('ACL_MASTERGRANTERUID', 1); // The user id we use to grant permissions that don't come from someone else
+
+    define('SQL_TF_COUNTGTZERO', '(CASE WHEN count(*) > 0 THEN 1 ELSE 0 END)');
+
+    $config = new Zend_Config(
+        array(
+            'acl' => array(
+                'groupidcol' => 'groupid',
+                'groupnamecol' => 'name',
+                'permkeycol' => 'permkey',
+                'permscopecol' => 'permscope',
+                'permvalcol' => 'permval',
+                'residcol' => 'resid',
+                'resowneruidcol' => 'owneruid',
+                'restypeidcol' => 'restypeid',
+                'roleidcol' => 'roleid',
+                'uidcol' => 'uid',
+
+                'table_acl_mappermissions' => 'acl_map_permissions',
+                'table_acl_permissions' => 'acl_permissions',
+                'table_acl_resources' => 'acl_resources',
+                'table_groups' => 'groups',
+                'table_roles' => 'roles',
+                'table_users' => 'users'
+            ),
+            'database' => array(
+                'adapter' => 'mysqli',
+                'params' => array(
+                    'host' => 'localhost',
+                    'username' => 'databaseuser',
+                    'password' => 'databasepassword',
+                    'dbname' => 'databasename'
+                )
+            )
+        )
+    );
+
+    require_once('Zend/Db.php');
+    $db = Zend_Db::factory($config->database);
+
+    $acl = new acl($db, $config->acl->toArray());
+
+### Useage Samples
+
+Check if user is allowed to do something:
+
+    if(!$acl->resource_uperm('task_' . $taskid, $uid, 'task_view')){throw new Exception('Not allowed to view this task');}
+
+Grant a user permission on a resource:
+
+    $acl->resource_upermgrant('task_1', 'task', ACL_MASTERGRANTERUID, $softNs->auth->g('uid'));
+
+Get a list of all resource keys for a specific type:
+
+    // Find all for user
+    $resourcesu = $acl->resource_ufind($uid, ACL_RESTYPE_PROJECT);
+
+    // Find all for user's groups
+    $resourcesg = $acl->resource_gfind($acl->group_umemberships($uid), ACL_RESTYPE_PROJECT);
+
+    $resources = array_merge($resourcesu, $resourcesg);
+
+    if(!empty($resources)){
+        foreach($resources as $k => $v){
+            $resources[$k] = str_replace('project_', '', $v);
+        }
+    }
