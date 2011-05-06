@@ -3,7 +3,6 @@
 // Version 1.0.0
 
 require_once('Zend/Db/Adapter/Abstract.php');
-require_once('class.genericAPI.php');
 
 class ACLayer{
     protected $config = array();
